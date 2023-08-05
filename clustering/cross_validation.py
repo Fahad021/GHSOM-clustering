@@ -51,10 +51,5 @@ km.fit(X=input_data,y=None)
 results= [[]]*14
 results=np.array(results)
 positions = km.predict(input_data)
-results={}
-for index,i in enumerate(df_nominal):
-    results[i]=positions[index]
-
-
-
+results = {i: positions[index] for index, i in enumerate(df_nominal)}
 print(results)

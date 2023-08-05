@@ -76,15 +76,14 @@ def cal_clustered_mqe(input_data, result_index = None):
 
     if result_index is None:
         return cal_mqe(input_data)
-    else:
-        for i in result_index:
-            indices = i
-            if indices == []:
-                mqe.append(0.0)
-            else:
-                clustered_input = np.take(input_data, indices, 0)
-                # print(clustered_input)
-                mqe.append(cal_mqe(clustered_input))
+    for i in result_index:
+        indices = i
+        if indices == []:
+            mqe.append(0.0)
+        else:
+            clustered_input = np.take(input_data, indices, 0)
+            # print(clustered_input)
+            mqe.append(cal_mqe(clustered_input))
     return mqe
 
 
@@ -94,17 +93,22 @@ def cal_mqe(input_data):
         input_data = np.expand_dims(input_data, axis=0)
 
     return np.mean(
-                np.sqrt(
-                    np.sum(
-                        np.power(
-                            np.subtract(
-                                input_data,
-                                np.stack( np.mean(input_data, axis=0) for i in range(len(input_data)) )
-                            )
-                        , 2)
-                    , axis=1)
-                )
+        np.sqrt(
+            np.sum(
+                np.power(
+                    np.subtract(
+                        input_data,
+                        np.stack(
+                            np.mean(input_data, axis=0)
+                            for _ in range(len(input_data))
+                        ),
+                    ),
+                    2,
+                ),
+                axis=1,
             )
+        )
+    )
 
 # call tensorflow som class
 def call_som(m, n, dim, input_data, weight_after_insertion=None, alpha=None, sigma=None):
@@ -155,13 +159,11 @@ def clustered_location_input_index(m, n, trained_weight, som_result_map, input_d
 
 # find which topology location is near to error unit
 def find_neighborhood_location(topology_map, m, n, error_unit_location):
-    stacked_error_unit = np.stack(error_unit_location  for i in range(m*n))
+    stacked_error_unit = np.stack(error_unit_location for _ in range(m*n))
 
     # print(np.absolute(np.sum(np.subtract(stacked_error_unit,topology_map), axis=1)))
     neighborhood_location_index_tmp = np.sum(np.absolute(np.subtract(stacked_error_unit,topology_map)), axis=1)
-    neighborhood_location_index = np.squeeze(np.array(np.where(neighborhood_location_index_tmp == 1)))
-
-    return neighborhood_location_index
+    return np.squeeze(np.array(np.where(neighborhood_location_index_tmp == 1)))
 
 
 def get_dissimilar_weight_location(topology_map, error_unit_index, neighborhood_location_index, trained_weight):
@@ -169,16 +171,26 @@ def get_dissimilar_weight_location(topology_map, error_unit_index, neighborhood_
     neighborhood_location_weight = np.take(trained_weight, neighborhood_location_index, 0)
 
     dissimilar_weight_location_tmp_index = np.argmax(
-                                                np.sqrt(
-                                                    np.sum(
-                                                        np.power(
-                                                            np.subtract(
-                                                                np.stack([error_unit_weight for i in range(len(neighborhood_location_weight))])
-                                                            , neighborhood_location_weight)
-                                                        , 2)
-                                                    ,axis=1)
-                                                )
-                                            )
+        np.sqrt(
+            np.sum(
+                np.power(
+                    np.subtract(
+                        np.stack(
+                            [
+                                error_unit_weight
+                                for _ in range(
+                                    len(neighborhood_location_weight)
+                                )
+                            ]
+                        ),
+                        neighborhood_location_weight,
+                    ),
+                    2,
+                ),
+                axis=1,
+            )
+        )
+    )
     dissimilar_weight_location_index = np.take(neighborhood_location_index, dissimilar_weight_location_tmp_index)
     dissimilar_weight_location = np.take(topology_map, dissimilar_weight_location_index, 0)
 
@@ -188,9 +200,7 @@ def get_dissimilar_weight_location(topology_map, error_unit_index, neighborhood_
 def insert_units(slice_point, weight_topology_map):
     print('------after insertation -------')
     units_to_be_inserted = np.divide(np.add(np.take(weight_topology_map, slice_point, 0), np.take(weight_topology_map, slice_point-1, 0)), 2)
-    new_weight_topology_map = np.insert(weight_topology_map, slice_point, units_to_be_inserted, 0)
-
-    return new_weight_topology_map
+    return np.insert(weight_topology_map, slice_point, units_to_be_inserted, 0)
 
 
 def get_map_weight_after_unit_insertion(m, n, topology_map, error_unit_location, error_unit_index, dissimilar_weight_location, dissimilar_weight_location_index, trained_weight, input_dim):
@@ -201,13 +211,9 @@ def get_map_weight_after_unit_insertion(m, n, topology_map, error_unit_location,
     # print(dissimilar_weight_location)
 
     # check which layer should be insert
-    if error_unit_index > dissimilar_weight_location_index:
-        slice_point = error_unit_index
-    else:
-        slice_point = dissimilar_weight_location_index
-
+    slice_point = max(error_unit_index, dissimilar_weight_location_index)
     # check insert row or column
-    if  np.argmax(np.absolute(np.subtract(error_unit_location, dissimilar_weight_location))) == 1:
+    if np.argmax(np.absolute(np.subtract(error_unit_location, dissimilar_weight_location))) == 1:
         # insert one row
         print('insert row - add y direction')
 
@@ -257,10 +263,7 @@ def get_map_weight_after_unit_insertion(m, n, topology_map, error_unit_location,
 
         # check if slice point equal 0 if 0 then return 1
         print('slice_point')
-        if slice_point//n == 0:
-            slice_point = 1
-        else:
-            slice_point = slice_point//n
+        slice_point = 1 if slice_point//n == 0 else slice_point//n
         print(slice_point)
 
         print('-----------AfterReshape-----------')
@@ -283,7 +286,7 @@ def get_map_weight_after_unit_insertion(m, n, topology_map, error_unit_location,
 
 
 
-def check_tau2_condition (clustered_result_by_index, input_data, reault_mqe, mqe0, input_dim,m,mapname,level):
+def check_tau2_condition(clustered_result_by_index, input_data, reault_mqe, mqe0, input_dim,m,mapname,level):
     tau2 = 0.6
     print('---------------tau2*mqe0--------------')
     print(tau2*mqe0)
@@ -304,7 +307,7 @@ def check_tau2_condition (clustered_result_by_index, input_data, reault_mqe, mqe
 
             new_mqe0 = cal_mqe(new_input_that_not_satisfy_tau2_condition)
 
-            print("new mqe0: "+ str(new_mqe0))
+            print(f"new mqe0: {str(new_mqe0)}")
 
             check_tau1_condition(m, n, new_mqe0, new_input_that_not_satisfy_tau2_condition, input_dim,level,mapname=mapname,row=row,column=column)
             level -= 1
@@ -328,7 +331,7 @@ def check_tau2_condition (clustered_result_by_index, input_data, reault_mqe, mqe
 
 
 
-def check_tau1_condition (m, n,  mqe0, input_data, dim,level, row=0,column=0, mapname="Average_Map0"):
+def check_tau1_condition(m, n,  mqe0, input_data, dim,level, row=0,column=0, mapname="Average_Map0"):
 
     tau1 = 0.4
 
@@ -370,7 +373,7 @@ def check_tau1_condition (m, n,  mqe0, input_data, dim,level, row=0,column=0, ma
                 mapname = mapname  + '__unit' + '(' + str(row) + 'x' + str(column) + ')' + 'level' + str(level)+"shape="+str(m)+"x"+str(n)
 
             workbook = xlsxwriter.Workbook(mapname+".xlsx")
-            worksheet = workbook.add_worksheet("shape="+str(m)+"x"+str(n))
+            worksheet = workbook.add_worksheet(f"shape={str(m)}x{str(n)}")
 
             for col, data in enumerate(results):
                 worksheet.write_column(0,col , data)
@@ -433,4 +436,4 @@ n = 2
 
 check_tau1_condition(m, n, mqe0, input_data, input_dim,level=0)
 t=time.time()
-print (str(t-t0))
+print(t-t0)

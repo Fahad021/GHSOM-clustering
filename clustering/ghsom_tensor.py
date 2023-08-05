@@ -23,15 +23,8 @@ class GHSOM(object):
         #Assign required variables first
         self._m = m
         self._n = n
-        if tau1 is None:
-            tau1 = 0.1
-        else:
-            tau1 = float(tau1)
-        if tau2 is None:
-            tau2 = 0.1
-        else:
-            tau2 = float(tau2)
-
+        tau1 = 0.1 if tau1 is None else float(tau1)
+        tau2 = 0.1 if tau2 is None else float(tau2)
         ##INITIALIZE GRAPH
         self._graph = tf.Graph()
 
@@ -42,17 +35,26 @@ class GHSOM(object):
             self.input_data_tf = tf.placeholder("float")
 
             self.mqe = tf.reduce_mean(
-                        tf.sqrt(
-                            tf.reduce_sum(
-                                tf.pow(
-                                    tf.subtract(
-                                        self.input_data_tf,
-                                        tf.stack([tf.reduce_mean(self.input_data_tf, 0) for i in range(dim)])
-                                    )
-                                ,2)
-                            , 1, keep_dims=True)
-                        )
-                    , 0)
+                tf.sqrt(
+                    tf.reduce_sum(
+                        tf.pow(
+                            tf.subtract(
+                                self.input_data_tf,
+                                tf.stack(
+                                    [
+                                        tf.reduce_mean(self.input_data_tf, 0)
+                                        for _ in range(dim)
+                                    ]
+                                ),
+                            ),
+                            2,
+                        ),
+                        1,
+                        keep_dims=True,
+                    )
+                ),
+                0,
+            )
 
             ##INITIALIZE SESSION
             self._sess = tf.Session()

@@ -240,9 +240,7 @@ for cls in clusters:
         cls_array=np.array(df3.ix[cls, :])
         cls_array=scaler1.transform(cls_array)
         avg =np.average(cls_array,axis=0)
-        distance=[]
-        for i, col in enumerate(cls_array):
-            distance.append(np.linalg.norm(col - avg)**2)
+        distance = [np.linalg.norm(col - avg)**2 for col in cls_array]
         distances.append(np.average(np.array(distance)))
     else:
         distances.append(0.0)

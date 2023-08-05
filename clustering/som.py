@@ -30,14 +30,8 @@ class SOM(object):
         #Assign required variables first
         self._m = m
         self._n = n
-        if alpha is None:
-            alpha = 0.3
-        else:
-            alpha = float(alpha)
-        if sigma is None:
-            sigma = max(m, n) / 2.0
-        else:
-            sigma = float(sigma)    #initial neighbourhood value
+        alpha = 0.3 if alpha is None else float(alpha)
+        sigma = max(m, n) / 2.0 if sigma is None else float(sigma)
         self._n_iterations = abs(int(n_iterations))
 
 
@@ -91,16 +85,20 @@ class SOM(object):
             #   tf.pow: Computes the power of one value to another. 2 means square
             #   tf.stack: Stacks a list of rank-R tensors into one rank-(R+1) tensor. rank1 tensor --> rank2 tensor
             bmu_index = tf.argmin(
-                            tf.sqrt(
-                                tf.reduce_sum(
-                                    tf.pow(
-                                        tf.subtract(
-                                            self._weightage_vects,
-                                            tf.stack([self._vect_input for i in range(m*n)])
-                                            ),
-                                    2),
-                                1)),
-                        0)
+                tf.sqrt(
+                    tf.reduce_sum(
+                        tf.pow(
+                            tf.subtract(
+                                self._weightage_vects,
+                                tf.stack([self._vect_input for _ in range(m * n)]),
+                            ),
+                            2,
+                        ),
+                        1,
+                    )
+                ),
+                0,
+            )
 
             #This will extract the location of the BMU based on the BMU's
             #index
@@ -127,9 +125,16 @@ class SOM(object):
             #   tf.cast: Casts a tensor to a new type.
             #   tf.negative: Computes numerical negative value element-wise.
 
-            bmu_distance_squares = tf.reduce_sum(tf.pow(tf.subtract(
-                self._location_vects, tf.stack(
-                    [bmu_loc for i in range(m*n)])), 2), 1)
+            bmu_distance_squares = tf.reduce_sum(
+                tf.pow(
+                    tf.subtract(
+                        self._location_vects,
+                        tf.stack([bmu_loc for _ in range(m * n)]),
+                    ),
+                    2,
+                ),
+                1,
+            )
             neighbourhood_func = tf.exp(tf.negative(tf.div(tf.cast(
                 bmu_distance_squares, "float32"), tf.pow(_sigma_op, 2))))
             learning_rate_op = tf.multiply(_alpha_op, neighbourhood_func)
@@ -155,8 +160,11 @@ class SOM(object):
 
             weightage_delta = tf.multiply(
                 learning_rate_multiplier,
-                tf.subtract(tf.stack([self._vect_input for i in range(m*n)]),
-                       self._weightage_vects))
+                tf.subtract(
+                    tf.stack([self._vect_input for _ in range(m * n)]),
+                    self._weightage_vects,
+                ),
+            )
             new_weightages_op = tf.add(self._weightage_vects,
                                        weightage_delta)
             self._training_op = tf.assign(self._weightage_vects,
@@ -200,21 +208,18 @@ class SOM(object):
             #Train with each vector one by one
 
         print('SOM-Start')
-        # for i in range(10):
-        iter_no = 1
-        for input_vect in input_vects:
+        for iter_no, input_vect in enumerate(input_vects, start=1):
             self._sess.run(self._training_op,
                            feed_dict={self._vect_input: input_vect,
                                       self._iter_input: iter_no})
 
-            iter_no += 1
         # print('training end : ' + str(datetime.datetime.now()))
 
 
         # Store a centroid grid for easy retrieval later on
         # list() : converts to lists
         # enumerate:returns a iterator that will return (0, thing[0]), (1, thing[1]), (2, thing[2]), and so forth.
-        centroid_grid = [[] for i in range(self._m)]
+        centroid_grid = [[] for _ in range(self._m)]
         self._weightages = list(self._sess.run(self._weightage_vects))
 
         self._locations = list(self._sess.run(self._location_vects))
@@ -251,9 +256,10 @@ class SOM(object):
 
         to_return = []
         for vect in input_vects:
-            min_index = min([i for i in range(len(self._weightages))],
-                            key=lambda x: np.linalg.norm(vect-
-                                                         self._weightages[x]))
+            min_index = min(
+                list(range(len(self._weightages))),
+                key=lambda x: np.linalg.norm(vect - self._weightages[x]),
+            )
             to_return.append(self._locations[min_index])
 
         return to_return
